@@ -24,14 +24,13 @@
 
         <script>
 
-            var deck = [];
+            var deck = {};
 
             var selected_cards = {};
 
             $('.search_card').select2({
                 ajax: {
                     delay: 1000,
-                    // url: 'https://api.github.com/search/repositories',
                     url: 'https://api.scryfall.com/cards/search',
                     dataType: 'json',
                     data: function (params) {
@@ -41,8 +40,46 @@
                         return queryParameters;
                     },
                     processResults: function (data) {
+                        debugger;
+                        // {
+                        //     "results": [
+                        //         {
+                        //             "text": "Mountain Time Zone",
+                        //             "children": [
+                        //                 {
+                        //                     "id": "CA",
+                        //                     "text": "California"
+                        //                 },
+                        //                 {
+                        //                     "id": "CO",
+                        //                     "text": "Colarado"
+                        //                 }
+                        //             ]
+                        //         }
+                        //     ]
+                        // }
+
+                        var types = data.data.map(function(card){return card.type_line;});
+                        var results = types.map(function(card_type){
+                            return {
+                                "text": card_type,
+                                "children": data.data
+                                            .filter(function(card){
+                                                    return card_type == card.type_line
+                                                })
+                                            .map(function(card) {
+                                                    return {
+                                                        id: card.name,
+                                                        text: card.name,
+                                                        card: card
+                                                    };
+                                                })
+                            }
+                        });
+
                         return {
-                            results: data.data
+                            // results: data.data
+                            results: results
                         };
                     }
                 },
@@ -57,10 +94,26 @@
             });
 
             $('#add_card').on('click', function(e){
+                debugger;
+
+                // get selected card
                 var id = $('.search_card').val();
                 var card = selected_cards[id];
-                deck.push(card);
+                // if card is already in deck, increase
+                if (deck[card.name]) {
+                    deck[card.name].number++;
+                    return;
+                }
+                if (card) {
+                    deck[card.name] = {
+                        number: 1,
+                        card: card,
+                        tags: []
+                    };
+                }
+                // delete old cards...
                 selected_cards = {};
+                selected_cards[id] = card;
             });
 
 
