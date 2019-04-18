@@ -4,6 +4,15 @@ import sqlite3
 import requests
 from flask import Flask
 
+'''
+
+https://mtgjson.com/downloads/compiled/
+https://scryfall.com/docs/api
+https://scryfall.com/docs/api/cards/search
+https://api.scryfall.com/cards/search?q=Rumors
+
+'''
+
 app = Flask(__name__)
 
 # setup database
