@@ -41,7 +41,7 @@
             }
 
             .column-card-tags {
-                width: 150px !important;
+                width: 250px !important;
             }
 
             .column-card-name {
@@ -74,13 +74,13 @@
 
             <div class="row">
                 <div class="col-md-12 mt-3 mb-2 column-card-headers">
-                    <div class='column-card-tags'>
+                    <div class='ml-1 column-card-tags'>
                         tags
                     </div>
-                    <div class='column-card-count'>
+                    <div class='ml-1 column-card-count'>
                         count
                     </div>
-                    <div class='column-card-name'>
+                    <div class='ml-1 column-card-name'>
                         name
                     </div>
                 </div>
@@ -90,6 +90,7 @@
 
         </main>
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.2/d3.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
@@ -121,9 +122,6 @@
                 $.ajax({
                     method: 'GET',
                     url: 'https://api.scryfall.com/cards/named?exact=' + card_name,
-                    // data: {
-                    //     exact: card_name
-                    // }
                 }).done(callback)
             }
 
@@ -168,7 +166,6 @@
                         var parts = rows[i].split(' ');
                         var number = parseInt(parts[0]);
                         var card_name = parts.splice(1, parts.length).join(' ');
-
                         deck_list.push([number, card_name]);
                     }
                     findCards(deck_list);
@@ -225,7 +222,7 @@
                         self.model.tags = this.value.split(',');
                     })
                     .val(
-                        this.model.getTypes().join(',')
+                        this.model.getTags().join(',')
                     )
 
                 this.content = $('<div>')
@@ -299,8 +296,21 @@
                 this.parent = controller;
                 this.card = card;
                 this.count = 1;
-                this.tags = [];
+                var tags = [];
+                tags = tags.concat(this.getTypes());
+                tags = tags.concat(this.getColors());
+                tags.push(this.getRarity());
+                tags.push('cmc_'+this.getCMC());;
+                this.tags = tags;
                 this.view = new CardView(this, this.parent.$el);
+            }
+
+            CardModel.prototype.getTags = function() {
+                return this.tags;
+            }
+
+            CardModel.prototype.getCount = function() {
+                return this.count;
             }
 
             CardModel.prototype.add = function() {
@@ -321,15 +331,27 @@
                 return this.card.name;
             }
 
-            CardModel.prototype.update = function() {
-                this.view.update();
-            }
-
             CardModel.prototype.getTypes = function() {
                 var types = this.card.type_line.toLowerCase().split(' ');
                 return types.filter(function(d) {
-                    return '—' != d;
+                    return '—' != d && '//' != d;
                 });
+            }
+
+            CardModel.prototype.getColors = function() {
+                return this.card.color_identity;
+            }
+
+            CardModel.prototype.getRarity = function() {
+                return this.card.rarity;
+            }
+
+            CardModel.prototype.getCMC = function() {
+                return this.card.cmc;
+            }
+
+            CardModel.prototype.update = function() {
+                this.view.update();
             }
 
 
@@ -364,8 +386,6 @@
                     this.cards[name].remove();
                     // if no instances are left
                     if (!this.cards[name].number) {
-                        // this.cards[name].destroy();
-                        // delete this.cards[name];
                         this.destroy(name);
                     }
                 }
@@ -374,6 +394,27 @@
             CardCollection.prototype.destroy = function(name) {
                 this.cards[name].destroy();
                 delete this.cards[name];
+            }
+
+            CardCollection.prototype.getSize = function() {
+                return d3.sum(Object.values(deck.cards), function(card) {
+                    return card.count;
+                });
+            }
+
+            CardCollection.prototype.findOddsOfCardDraw = function(tags) {
+                var number = 0;
+                for (var name in this.cards) {
+                    var card = this.cards[name];
+                    var card_tags = card.getTags();
+                    var hasTags = card_tags.filter(function(tag) {
+                        return -1 != tags.indexOf(tag);
+                    });
+                    if (tags.length == hasTags.length) {
+                        number += card.getCount();
+                    }
+                }
+                return number/this.getSize()*100;
             }
 
 
