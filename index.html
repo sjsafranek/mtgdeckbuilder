@@ -8,14 +8,21 @@
         <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
     </head>
     <body>
-        <div class="container">
+        <main role="main" class="container">
             <div class="row">
-                <div class="input-group mb-3">
-                    <select class="form-control search_card"></select>
+                <h4 class="mt-5">Deck Builder</h4>
+                <div class="col-md-12">
+                    <div class="input-group mb-3">
+                        <select class="form-control search_card"></select>
+                    </div>
+                    <button id="add_card" class="btn btn-sm">Add</button>
                 </div>
-                <button id="add_card">Add</button>
             </div>
-        </div>
+            <div class="row">
+                <div class="col-md-12" id="deck">
+                </div>
+            </div>
+        </main>
 
         <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
         <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script> -->
@@ -24,48 +31,156 @@
 
         <script>
 
-            var deck = {};
+            var CardView = function(model) {
+                var self = this;
 
-            var selected_cards = {};
+                this.model = model;
+
+                this.countElement = $('<input>', {
+                        type: 'number',
+                        min: 0,
+                        id: this.model.card.name
+                    })
+                    .addClass('form-control form-control-sm')
+                    .width(75)
+                    .on('change', function(e){
+                        if (!parseInt(this.value)) {
+                            self.model.destroy();
+                        }
+                    })
+                    .val(this.model.count);
+
+                this.content = $('<div>')
+                    .addClass('form-inline')
+                    .append(
+                        $('<div>')
+                            .addClass('form-group mb-2')
+                            .append(
+                                this.countElement,
+                                $('<label>', {for: this.model.card.name})
+                                    .css({
+                                        'padding-left': '12px'
+                                    })
+                                    .append(this.model.card.name)
+                            )
+                    )
+
+                $('#deck').append(this.content);
+            }
+
+            CardView.prototype.update = function() {
+                this.countElement.val(this.model.count);
+            }
+
+            CardView.prototype.destroy = function() {
+                this.content.remove();
+            }
+
+
+
+            var CardModel = function(card, controller) {
+                this.parent = controller;
+                this.card = card;
+                this.count = 1;
+                this.tags = [];
+                this.view = new CardView(this);
+            }
+
+            CardModel.prototype.add = function() {
+                this.count++;
+                this.view.update();
+            }
+
+            CardModel.prototype.remove = function() {
+                this.count--;
+                this.view.update();
+            }
+
+            CardModel.prototype.destroy = function() {
+                this.view.destroy();
+                delete this.parent.cards[this.card.name];
+            }
+
+
+
+            var CardCollection = function(){
+                this.cards = {};
+            }
+
+            CardCollection.prototype.add = function(card) {
+                // increase the number of card in deck
+                if (this.cards[card.name]) {
+                    this.cards[card.name].add();
+                    return;
+                }
+                // add card
+                this.cards[card.name] = new CardModel(card, this);
+            }
+
+            CardCollection.prototype.remove = function(name) {
+                if (this.cards[name]) {
+                    // decrease number of card in deck
+                    this.cards[name].remove();
+                    // if no instances are left
+                    if (!this.cards[name].number) {
+                        this.cards[name].destroy();
+                        // delete this.cards[name];
+                        this.destroy(name);
+                    }
+                }
+            }
+
+            CardCollection.prototype.destroy = function(name) {
+                delete this.cards[name];
+            }
+
+
+
+
+            var deck = new CardCollection();
+
+
+
+
 
             $('.search_card').select2({
                 ajax: {
+                    // The number of milliseconds to wait for the user to stop typing before
+                    // issuing the ajax request.
                     delay: 1000,
+                    // @returns The url that the request should be made to.
                     url: 'https://api.scryfall.com/cards/search',
                     dataType: 'json',
+                    // @param params The object containing the parameters used to generate the
+                    //   request.
+                    // @returns Data to be directly passed into the request.
                     data: function (params) {
-                        var queryParameters = {
+                        return {
                             q: params.term
-                        }
-                        return queryParameters;
+                        };
                     },
+                    // You can modify the results that are returned from the server, allowing you
+                    // to make last-minute changes to the data, or find the correct part of the
+                    // response to pass to Select2. Keep in mind that results should be passed as
+                    // an array of objects.
+                    //
+                    // @param data The data as it is returned directly by jQuery.
+                    // @returns An object containing the results data as well as any required
+                    //   metadata that is used by plugins. The object should contain an array of
+                    //   data objects as the `results` key.
                     processResults: function (data) {
-                        debugger;
-                        // {
-                        //     "results": [
-                        //         {
-                        //             "text": "Mountain Time Zone",
-                        //             "children": [
-                        //                 {
-                        //                     "id": "CA",
-                        //                     "text": "California"
-                        //                 },
-                        //                 {
-                        //                     "id": "CO",
-                        //                     "text": "Colarado"
-                        //                 }
-                        //             ]
-                        //         }
-                        //     ]
-                        // }
 
-                        var types = data.data.map(function(card){return card.type_line;});
+                        var types = data.data.map(function(card){
+                            // grab first type
+                            return card.type_line.split(' ')[0];
+                        });
+                        types = [...new Set(types)];
                         var results = types.map(function(card_type){
                             return {
                                 "text": card_type,
                                 "children": data.data
                                             .filter(function(card){
-                                                    return card_type == card.type_line
+                                                    return -1 != card.type_line.indexOf(card_type);
                                                 })
                                             .map(function(card) {
                                                     return {
@@ -79,41 +194,58 @@
 
                         return {
                             // results: data.data
-                            results: results
+                            "results": results,
+                            "paginate": {
+                              "more": true
+                            }
                         };
+                    },
+                    // You can use a custom AJAX transport function if you do not want to use the
+                    // default one provided by jQuery.
+                    //
+                    // @param params The object containing the parameters used to generate the
+                    //   request.
+                    // @param success A callback function that takes `data`, the results from the
+                    //   request.
+                    // @param failure A callback function that indicates that the request could
+                    //   not be completed.
+                    // @returns An object that has an `abort` function that can be called to abort
+                    //   the request if needed.
+                    transport: function (params, success, failure) {
+                        if(!params.data.q) {
+                            return;
+                        }
+                        var $request = $.ajax(params);
+                        $request.then(success);
+                        $request.fail(failure);
+                        return $request;
                     }
                 },
                 placeholder: 'Search for a card',
                 templateResult: function(value) {
-                    return value.name;
+                    return value.text;
                 },
                 templateSelection: function(value) {
-                    selected_cards[value.id] = value;
-                    return value.name;
+                    return value.text;
                 }
             });
 
             $('#add_card').on('click', function(e){
-                debugger;
-
                 // get selected card
-                var id = $('.search_card').val();
-                var card = selected_cards[id];
+                var card = $('.search_card').select2('data')[0].card;
                 // if card is already in deck, increase
-                if (deck[card.name]) {
-                    deck[card.name].number++;
-                    return;
-                }
-                if (card) {
-                    deck[card.name] = {
-                        number: 1,
-                        card: card,
-                        tags: []
-                    };
-                }
-                // delete old cards...
-                selected_cards = {};
-                selected_cards[id] = card;
+                // if (deck[card.name]) {
+                //     deck[card.name].number++;
+                //     return;
+                // }
+                // if (card) {
+                //     deck[card.name] = {
+                //         number: 1,
+                //         card: card,
+                //         tags: []
+                //     };
+                // }
+                deck.add(card);
             });
 
 
