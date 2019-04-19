@@ -1,0 +1,99 @@
+﻿//Artifact (6)
+1 Everflowing Chalice
+1 Izzet Cluestone
+1 Izzet Locket
+1 Primal Amulet
+1 Sol Ring
+1 Thran Dynamo
+
+//Artifact Creature (2)
+1 Psychosis Crawler
+1 Torrential Gearhulk
+
+//Creature (14)
+1 Bloodwater Entity
+1 Crackling Drake
+1 Docent of Perfection
+1 Enigma Drake
+1 Erratic Cyclops
+1 Jhoira of the Ghitu
+1 Laboratory Maniac
+1 Melek, Izzet Paragon
+1 Murmuring Mystic
+1 Niv-Mizzet, the Firemind
+1 Talrand, Sky Summoner
+1 Tandem Lookout
+1 The Locust God
+1 Thing in the Ice
+
+//Enchantment (6)
+1 As Foretold
+1 Curiosity
+1 Metallurgic Summonings
+1 Ophidian Eye
+1 Swarm Intelligence
+1 Thousand-Year Storm
+
+//Instant (21)
+1 Abrade
+1 Aetherize
+1 Brainstorm
+1 Burst Lightning
+1 Chemister's Insight
+1 Comet Storm
+1 Counterflux
+1 Cyclonic Rift
+1 Disallow
+1 Electrodominance
+1 Glimmer of Genius
+1 Insidious Will
+1 Lightning Bolt
+1 Mindswipe
+1 Mission Briefing
+1 Mystic Confluence
+1 Pongify
+1 Precognitive Perception
+1 Pull from Tomorrow
+1 Reality Shift
+1 Starstorm
+
+//Instant // Instant (1)
+1 Expansion // Explosion
+
+//Instant // Sorcery (1)
+1 Reduce // Rubble
+
+//Sorcery (11)
+1 Call to Mind
+1 Collective Defiance
+1 Invoke the Firemind
+1 Lava Coil
+1 Mystic Retrieval
+1 Ponder
+1 Preordain
+1 Rise from the Tides
+1 Serum Visions
+1 Treasure Cruise
+1 Wash Out
+
+//Land (37)
+1 Cephalid Coliseum
+1 Command Tower
+1 Desert of the Mindful
+1 Evolving Wilds
+1 Ghost Quarter
+1 Halimar Depths
+1 Highland Lake
+8 Island
+1 Izzet Boilerworks
+1 Izzet Guildgate
+1 Mirrorpool
+11 Mountain
+1 Myriad Landscape
+1 Reliquary Tower
+1 Remote Isle
+1 Rupture Spire
+1 Skyline Cascade
+1 Swiftwater Cliffs
+1 Tectonic Edge
+1 Terramorphic Expanse
