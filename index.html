@@ -3,11 +3,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <title>Mtg Deck Builder</title>
-        <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"> -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
 
         <style>
+
             #deck {
                 min-height: 50px;
                 font-size: 12px;
@@ -15,7 +15,6 @@
 
             .form-control-xs {
                 padding: 0.1rem .5rem;
-                /*font-size: .75rem;*/
                 font-size: 11px;
                 line-height: 0.75;
             }
@@ -27,8 +26,6 @@
             .popover {
                 max-width: none;
             }
-
-
 
             .column-card-headers div {
                 display: inline-block;
@@ -49,6 +46,7 @@
             }
 
         </style>
+
     </head>
     <body>
         <main role="main" class="container">
@@ -59,7 +57,7 @@
 
             <div class="row">
                 <div class="col-md-4">
-                    <input type"text" class="form-control form-control-sm mb-2" placeholder="Deck name"></input>
+                    <input type"text" class="form-control form-control-sm mb-2" placeholder="Deck name" id="deck_name"></input>
                 </div>
             </div>
 
@@ -100,6 +98,7 @@
 
 
             function findCards(deck_list, callback) {
+                deck.removeAllCards();
                 var loop = function(_list) {
                     if (!_list.length) return;
                     setTimeout(function(){
@@ -107,7 +106,7 @@
                         var count = card[0];
                         var card_name = card[1];
                         findCard(card_name, function(card_data) {
-                            var card = deck.add(card_data);
+                            var card = deck.addCard(card_data);
                             card.count = count;
                             card.update();
                             _list.length && loop(_list);
@@ -180,12 +179,20 @@
             var Storage = function() {}
 
             Storage.prototype.get = function(key) {
-                return JSON.stringify(localStorage.getItem(key));
+                return JSON.parse(localStorage.getItem(key));
             }
 
             Storage.prototype.set = function(key, val) {
                 localStorage.setItem(key, JSON.stringify(val));
             }
+
+            Storage.prototype.remove = function(key) {
+                localStorage.removeItem(key);
+            }
+
+            var db = new Storage();
+
+
 
 
             var CardView = function(model, container) {
@@ -202,13 +209,13 @@
                         id: card_name
                     })
                     .addClass('form-control form-control-xs mr-2 column-card-count')
-                    // .width(75)
                     .on('change', function(e){
                         var value = parseInt(this.value);
                         if (!value) {
                             self.container.trigger('destroy_card', [card_name]);
                         }
                         self.model.count = value;
+                        self.container.trigger('update_card', [card_name]);
                     })
                     .val(this.model.count);
 
@@ -217,9 +224,9 @@
                         placeholder: 'tags'
                     })
                     .addClass('form-control form-control-xs mr-2 column-card-tags')
-                    // .width(150)
                     .on('change', function(e){
                         self.model.tags = this.value.split(',');
+                        self.container.trigger('update_card', [card_name]);
                     })
                     .val(
                         this.model.getTags().join(',')
@@ -275,10 +282,7 @@
                                             .append(card_name)
                                     )
                             )
-                    )
-
-
-
+                    );
 
                 this.container.append(this.content);
             }
@@ -292,16 +296,17 @@
             }
 
 
-            var CardModel = function(card, controller) {
+            var CardModel = function(card, controller, options) {
+                options = options || {};
                 this.parent = controller;
                 this.card = card;
-                this.count = 1;
+                this.count = options.count || 1;
                 var tags = [];
                 tags = tags.concat(this.getTypes());
                 tags = tags.concat(this.getColors());
                 tags.push(this.getRarity());
-                tags.push('cmc_'+this.getCMC());;
-                this.tags = tags;
+                tags.push('cmc_'+this.getCMC());
+                this.tags = options.tags || tags;
                 this.view = new CardView(this, this.parent.$el);
             }
 
@@ -364,23 +369,27 @@
 
             CardCollection.prototype.addListeners = function() {
                 var self = this;
-                this.$el.on('destroy_card', function(e, card_name) {
-                    self.destroy(card_name);
-                });
+                this.$el
+                    .on('destroy_card', function(e, card_name) {
+                        self.destroy(card_name);
+                    })
+                    .on('update_card', function(e, card_name) {
+                        self.save();
+                    });
             }
 
-            CardCollection.prototype.add = function(card) {
+            CardCollection.prototype.addCard = function(card, options) {
                 // increase the number of card in deck
                 if (this.cards[card.name]) {
                     this.cards[card.name].add();
                     return this.cards[card.name];
                 }
                 // add card
-                this.cards[card.name] = new CardModel(card, this);
+                this.cards[card.name] = new CardModel(card, this, options);
                 return this.cards[card.name];
             }
 
-            CardCollection.prototype.remove = function(name) {
+            CardCollection.prototype.removeCard = function(name) {
                 if (this.cards[name]) {
                     // decrease number of card in deck
                     this.cards[name].remove();
@@ -417,7 +426,46 @@
                 return number/this.getSize()*100;
             }
 
+            CardCollection.prototype.dump = function(){
+                return Object.values(deck.cards).map(function(d) {
+                    return {
+                        count: d.count,
+                        card: d.card,
+                        tags: d.tags
+                    };
+                });
+            }
 
+            CardCollection.prototype.save = function() {
+                db.set($('#deck_name').val(), this.dump());
+            }
+
+            CardCollection.prototype.removeAllCards = function() {
+                for (var name in this.cards) {
+                    this.destroy(name);
+                }
+            }
+
+            CardCollection.prototype.load = function(deck_name) {
+                //
+                var cards = db.get(deck_name);
+
+                //
+                if (!cards) return;
+
+                // remove all cards
+                this.removeAllCards();
+
+                //
+                for (var i=0; i<cards.length; i++) {
+                    this.addCard(cards[i].card, {
+                        tags: cards[i].tags,
+                        count: cards[i].count
+                    });
+                }
+
+                $('#deck_name').val(deck_name)
+            }
 
 
             var deck = new CardCollection( $('#deck') );
@@ -523,7 +571,7 @@
                 // get selected card
                 if ($('.search_card').val()) {
                     var card = $('.search_card').select2('data')[0].card;
-                    deck.add(card);
+                    deck.addCard(card);
                 }
             });
 
