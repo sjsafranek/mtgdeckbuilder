@@ -11,6 +11,12 @@
             #deck {
                 min-height: 50px;
                 font-size: 12px;
+                max-height: 70%;
+                overflow-y: scroll;
+            }
+
+            #tags {
+                height: 200px;
             }
 
             .form-control-xs {
@@ -56,8 +62,9 @@
             </div>
 
             <div class="row">
-                <div class="col-md-4">
-                    <input type"text" class="form-control form-control-sm mb-2" placeholder="Deck name" id="deck_name"></input>
+                <div class="col-md-4 mb-2">
+                    <!-- <input type"text" class="form-control form-control-sm mb-2" placeholder="Deck name" id="deck_name"></input> -->
+                    <select class="form-control mb-2" id="deck_name"></select>
                 </div>
             </div>
 
@@ -71,19 +78,25 @@
             </div>
 
             <div class="row">
-                <div class="col-md-12 mt-3 mb-2 column-card-headers">
-                    <div class='ml-1 column-card-tags'>
-                        tags
+                <div class="col-md-8">
+                    <div class="col-md-12 mt-3 mb-2 column-card-headers">
+                        <div class='ml-1 column-card-tags'>
+                            tags
+                        </div>
+                        <div class='ml-1 column-card-count'>
+                            count
+                        </div>
+                        <div class='ml-1 column-card-name'>
+                            name
+                        </div>
                     </div>
-                    <div class='ml-1 column-card-count'>
-                        count
-                    </div>
-                    <div class='ml-1 column-card-name'>
-                        name
+                    <div class="col-md-12" id="deck">
                     </div>
                 </div>
-                <div class="col-md-12" id="deck">
+                <div class="col-md-4">
+                    <select multiple="true" class="form-control form-control-xs" id="tags"></select>
                 </div>
+
             </div>
 
         </main>
@@ -95,85 +108,6 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
 
         <script>
-
-
-            function findCards(deck_list, callback) {
-                deck.removeAllCards();
-                var loop = function(_list) {
-                    if (!_list.length) return;
-                    setTimeout(function(){
-                        var card = _list.shift();
-                        var count = card[0];
-                        var card_name = card[1];
-                        findCard(card_name, function(card_data) {
-                            var card = deck.addCard(card_data);
-                            card.count = count;
-                            card.update();
-                            _list.length && loop(_list);
-                        })
-                    }, 200);
-                }
-                loop(deck_list);
-            }
-
-            function findCard(card_name, callback) {
-                // https://scryfall.com/docs/api/cards/named
-                $.ajax({
-                    method: 'GET',
-                    url: 'https://api.scryfall.com/cards/named?exact=' + card_name,
-                }).done(callback)
-            }
-
-
-            function enableFileDrop($elem, callback) {
-            	$elem.get(0).ondrop = function(e) {
-            		e.preventDefault();
-            		$(this).css('outline', 'none');
-            		var file = e.dataTransfer.files[0];
-            		callback && callback(file);
-            	}
-            	$elem.get(0).ondragover = $elem.get(0).ondragenter = function(e) {
-            		e.preventDefault();
-            		$(this).css('outline', '2px dashed #92b0b3');
-            	};
-            	$elem.get(0).ondragstart = function(e) {
-            		e.preventDefault();
-            		$(this).css('outline', '2px dashed #92b0b3');
-            	};
-            	$elem.get(0).ondragend = $elem.get(0).ondragleave = function(e) {
-            		e.preventDefault();
-            		$(this).css('outline', 'none');
-            	};
-            }
-
-            enableFileDrop($('#deck'), function(file) {
-                // create file reader
-        		var reader = new FileReader();
-
-        		// parse file listener
-        		reader.onload = function(e) {
-                    var deck_list = []
-        			var rows = reader.result.split('\n');
-                    for (var i=0; i<rows.length; i++) {
-                        // parse mtgvalue text file
-                        // ignore blank rows
-                        // ignore commented lines
-                        // ignore sideboard cards
-                        if (1 == rows[i].length || '' == rows[i] || ' ' == rows[i] || '//' == rows[i].slice(0,2) || 'SB' == rows[i].slice(0,2)) {
-                            continue;
-                        }
-                        var parts = rows[i].split(' ');
-                        var number = parseInt(parts[0]);
-                        var card_name = parts.splice(1, parts.length).join(' ');
-                        deck_list.push([number, card_name]);
-                    }
-                    findCards(deck_list);
-        		}
-
-        		// read file
-        		reader.readAsText(file);
-            });
-
 
 
             var Storage = function() {}
@@ -190,6 +124,10 @@
                 localStorage.removeItem(key);
             }
 
+            Storage.prototype.keys = function() {
+                return Object.keys(localStorage);
+            }
+
             var db = new Storage();
 
 
@@ -201,6 +139,8 @@
                 this.model = model;
                 this.container = container;
 
+                this.container.trigger('add_card', [this.model]);
+
                 var card_name = self.model.getName();
 
                 this.countElement = $('<input>', {
@@ -211,11 +151,8 @@
                     .addClass('form-control form-control-xs mr-2 column-card-count')
                     .on('change', function(e){
                         var value = parseInt(this.value);
-                        if (!value) {
-                            self.container.trigger('destroy_card', [card_name]);
-                        }
                         self.model.count = value;
-                        self.container.trigger('update_card', [card_name]);
+                        self.container.trigger('update_card', [self.model]);
                     })
                     .val(this.model.count);
 
@@ -226,7 +163,7 @@
                     .addClass('form-control form-control-xs mr-2 column-card-tags')
                     .on('change', function(e){
                         self.model.tags = this.value.split(',');
-                        self.container.trigger('update_card', [card_name]);
+                        self.container.trigger('update_card', [self.model]);
                     })
                     .val(
                         this.model.getTags().join(',')
@@ -276,7 +213,6 @@
                                                         content += '<img src="'+urls[i]+'"/>';
                                                     }
                                                     return content;
-                                                    // return '<img src="'+$(this).data('img') + '" />';
                                                 }
                                             })
                                             .append(card_name)
@@ -293,6 +229,14 @@
 
             CardView.prototype.destroy = function() {
                 this.content.remove();
+            }
+
+            CardView.prototype.hide = function() {
+                this.content.hide();
+            }
+
+            CardView.prototype.show = function() {
+                this.content.show();
             }
 
 
@@ -370,35 +314,41 @@
             CardCollection.prototype.addListeners = function() {
                 var self = this;
                 this.$el
-                    .on('destroy_card', function(e, card_name) {
-                        self.destroy(card_name);
+                    .on('add_card update_card remove_card', function(e, card) {
+                        // console.log(e, card);
+                        // var card_name = card.getName();
+                        // var card = self.cards[card_name];
+                        if (card && card.count < 1) {
+                            var card_name = card.getName();
+                            self.destroy(card_name);
+                        }
+                        self.$el.trigger('update_deck', [self]);
                     })
-                    .on('update_card', function(e, card_name) {
-                        self.save();
-                    });
             }
 
             CardCollection.prototype.addCard = function(card, options) {
                 // increase the number of card in deck
                 if (this.cards[card.name]) {
                     this.cards[card.name].add();
+                    this.$el.trigger('update_deck', [this]);
                     return this.cards[card.name];
                 }
                 // add card
                 this.cards[card.name] = new CardModel(card, this, options);
+                this.$el.trigger('update_deck', [this]);
                 return this.cards[card.name];
             }
 
-            CardCollection.prototype.removeCard = function(name) {
-                if (this.cards[name]) {
-                    // decrease number of card in deck
-                    this.cards[name].remove();
-                    // if no instances are left
-                    if (!this.cards[name].number) {
-                        this.destroy(name);
-                    }
-                }
-            }
+            // CardCollection.prototype.removeCard = function(name) {
+            //     if (this.cards[name]) {
+            //         // decrease number of card in deck
+            //         this.cards[name].remove();
+            //         // if no instances are left
+            //         if (!this.cards[name].number) {
+            //             this.destroy(name);
+            //         }
+            //     }
+            // }
 
             CardCollection.prototype.destroy = function(name) {
                 this.cards[name].destroy();
@@ -406,7 +356,7 @@
             }
 
             CardCollection.prototype.getSize = function() {
-                return d3.sum(Object.values(deck.cards), function(card) {
+                return d3.sum(Object.values(this.cards), function(card) {
                     return card.count;
                 });
             }
@@ -427,7 +377,7 @@
             }
 
             CardCollection.prototype.dump = function(){
-                return Object.values(deck.cards).map(function(d) {
+                return Object.values(this.cards).map(function(d) {
                     return {
                         count: d.count,
                         card: d.card,
@@ -436,39 +386,232 @@
                 });
             }
 
-            CardCollection.prototype.save = function() {
-                db.set($('#deck_name').val(), this.dump());
-            }
-
-            CardCollection.prototype.removeAllCards = function() {
+            CardCollection.prototype.destroyAllCards = function() {
                 for (var name in this.cards) {
                     this.destroy(name);
                 }
             }
 
-            CardCollection.prototype.load = function(deck_name) {
+            CardCollection.prototype.getAllTags = function() {
+                var tags = [];
+                for (var name in this.cards) {
+                    tags = tags.concat(this.cards[name].tags);
+                }
+                return [...new Set(tags)];
+            }
+
+            CardCollection.prototype.filter = function(tags) {
+                for (var name in this.cards) {
+                    var card = this.cards[name];
+                    var card_tags = card.getTags();
+                    var hasTags = card_tags.filter(function(tag) {
+                        return -1 != tags.indexOf(tag);
+                    });
+
+                    if (tags.length == hasTags.length) {
+                        card.view.show();
+                    } else {
+                        card.view.hide();
+                    }
+                }
+            }
+
+            // CardCollection.prototype.load = function(deck_name) {
+            //     //
+            //     var cards = db.get(deck_name);
+            //
+            //     if (!cards) return;
+            //
+            //     // remove all cards
+            //     this.destroyAllCards();
+            //
+            //     //
+            //     for (var i=0; i<cards.length; i++) {
+            //         this.addCard(cards[i].card, {
+            //             tags: cards[i].tags,
+            //             count: cards[i].count
+            //         });
+            //     }
+            //
+            //     $('#deck_name').val(deck_name)
+            // }
+
+
+
+
+            function enableFileDrop($elem, callback) {
+            	$elem.get(0).ondrop = function(e) {
+            		e.preventDefault();
+            		$(this).css('outline', 'none');
+            		var file = e.dataTransfer.files[0];
+            		callback && callback(file);
+            	}
+            	$elem.get(0).ondragover = $elem.get(0).ondragenter = function(e) {
+            		e.preventDefault();
+            		$(this).css('outline', '2px dashed #92b0b3');
+            	};
+            	$elem.get(0).ondragstart = function(e) {
+            		e.preventDefault();
+            		$(this).css('outline', '2px dashed #92b0b3');
+            	};
+            	$elem.get(0).ondragend = $elem.get(0).ondragleave = function(e) {
+            		e.preventDefault();
+            		$(this).css('outline', 'none');
+            	};
+            }
+
+
+
+
+            var App = function($el){
+                this.$el = $el;
+                this.deck = new CardCollection( this.$el );
+                this.init();
+
+                $("#deck_name").append(
+                    db.keys().map(function(d) {
+                        return $('<option>').append(d);
+                    })
+                );
+
+                $("#deck_name").select2({
+                    tags: true
+                });
+
+                var name = $("#deck_name").val();
+                name && this.load(name);
+
+                var self = this;
+                $("#deck_name").on('change', function() {
+                    var name = this.value;
+                    name && self.load(name);
+                });
+
+                $('#tags').on('change', function() {
+                    var values = $(this).val();
+                    var odds = self.deck.findOddsOfCardDraw(values);
+                    self.deck.filter(values);
+                });
+            }
+
+            App.prototype.getDeckName = function() {
+                return $('#deck_name').val();
+            }
+
+            App.prototype.setDeckName = function(name) {
+                return $('#deck_name').val(name);
+            }
+
+            App.prototype.save = function() {
+                var deck_name = this.getDeckName();
+                deck_name && db.set(deck_name, this.deck.dump());
+            }
+
+            App.prototype.load = function(deck_name) {
                 //
                 var cards = db.get(deck_name);
 
-                //
                 if (!cards) return;
 
                 // remove all cards
-                this.removeAllCards();
+                this.deck.destroyAllCards();
 
                 //
                 for (var i=0; i<cards.length; i++) {
-                    this.addCard(cards[i].card, {
+                    this.deck.addCard(cards[i].card, {
                         tags: cards[i].tags,
                         count: cards[i].count
                     });
                 }
 
-                $('#deck_name').val(deck_name)
+                this.setDeckName(deck_name);
+
+                $('#tags')
+                    .empty()
+                    .append(
+                        this.deck.getAllTags().map(function(d){
+                            return $('<option>', {value: d}).append(d);
+                        })
+                    );
             }
 
+            App.prototype.init = function() {
+                var self = this;
 
-            var deck = new CardCollection( $('#deck') );
+                $('#add_card').on('click', function(e){
+                    // get selected card
+                    if ($('.search_card').val()) {
+                        var card = $('.search_card').select2('data')[0].card;
+                        self.deck.addCard(card);
+                    }
+                });
+
+                this.$el
+                    .on('update_deck', function(e, deck) {
+                        // console.log(e, deck);
+                        self.save();
+                    });
+
+                enableFileDrop(this.$el, function(file) {
+                    // create file reader
+                    var reader = new FileReader();
+
+                    // parse file listener
+                    reader.onload = function(e) {
+                        var deck_list = []
+                        var rows = reader.result.split('\n');
+                        for (var i=0; i<rows.length; i++) {
+                            // parse mtgvalue text file
+                            // ignore blank rows
+                            // ignore commented lines
+                            // ignore sideboard cards
+                            if (1 == rows[i].length || '' == rows[i] || ' ' == rows[i] || '//' == rows[i].slice(0,2) || 'SB' == rows[i].slice(0,2)) {
+                                continue;
+                            }
+                            var parts = rows[i].split(' ');
+                            var number = parseInt(parts[0]);
+                            var card_name = parts.splice(1, parts.length).join(' ');
+                            deck_list.push([number, card_name]);
+                        }
+                        self.findCards(deck_list);
+                    }
+
+                    // read file
+                    reader.readAsText(file);
+                });
+
+            }
+
+            App.prototype.findCards = function(deck_list, callback) {
+                var self = this;
+                this.deck.destroyAllCards();
+                var loop = function(_list) {
+                    if (!_list.length) return;
+                    setTimeout(function(){
+                        var card = _list.shift();
+                        var count = card[0];
+                        var card_name = card[1];
+                        self.findCard(card_name, function(card_data) {
+                            var card = app.deck.addCard(card_data);
+                            card.count = count;
+                            card.update();
+                            _list.length && loop(_list);
+                        })
+                    }, 200);
+                }
+                loop(deck_list);
+            }
+
+            App.prototype.findCard = function(card_name, callback) {
+                // https://scryfall.com/docs/api/cards/named
+                $.ajax({
+                    method: 'GET',
+                    url: 'https://api.scryfall.com/cards/named?exact=' + card_name,
+                }).done(callback)
+            }
+
+            var app = new App($('#deck'));
+
 
 
 
@@ -567,13 +710,13 @@
                 }
             });
 
-            $('#add_card').on('click', function(e){
-                // get selected card
-                if ($('.search_card').val()) {
-                    var card = $('.search_card').select2('data')[0].card;
-                    deck.addCard(card);
-                }
-            });
+            // $('#add_card').on('click', function(e){
+            //     // get selected card
+            //     if ($('.search_card').val()) {
+            //         var card = $('.search_card').select2('data')[0].card;
+            //         app.deck.addCard(card);
+            //     }
+            // });
 
 
         </script>
