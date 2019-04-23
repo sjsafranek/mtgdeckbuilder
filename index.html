@@ -92,6 +92,11 @@
                     </div>
                     <div class="col-md-12" id="deck">
                     </div>
+                    <div class="col-md-12 mt-3 mb-2 column-card-headers">
+                        <div class='ml-1 column-card-tags'></div>
+                        <div class='ml-1 column-card-count column-card-count-total'></div>
+                        <div class='ml-1 column-card-name'></div>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <select multiple="true" class="form-control form-control-xs" id="tags"></select>
@@ -401,6 +406,7 @@
             }
 
             CardCollection.prototype.filter = function(tags) {
+                var number = 0;
                 for (var name in this.cards) {
                     var card = this.cards[name];
                     var card_tags = card.getTags();
@@ -410,10 +416,12 @@
 
                     if (tags.length == hasTags.length) {
                         card.view.show();
+                        number += card.getCount();
                     } else {
                         card.view.hide();
                     }
                 }
+                return number;
             }
 
             // CardCollection.prototype.load = function(deck_name) {
@@ -490,7 +498,8 @@
                 $('#tags').on('change', function() {
                     var values = $(this).val();
                     var odds = self.deck.findOddsOfCardDraw(values);
-                    self.deck.filter(values);
+                    var num = self.deck.filter(values);
+                    $('.column-card-count-total').empty().append(num);
                 });
             }
 
